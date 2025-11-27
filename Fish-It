@@ -88,7 +88,23 @@ local function setFlag(key, value)
     saveConfig(Config)
 end
 
---// Services
+--// Service and Modules
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+local net = ReplicatedStorage:WaitForChild("Packages")
+    :WaitForChild("_Index")
+    :WaitForChild("sleitnick_net@0.2.0")
+    :WaitForChild("net")
+
+local Replion = _G.Replion or require(ReplicatedStorage.Packages.Replion)
+local ItemUtility = _G.ItemUtility or require(ReplicatedStorage.Shared.ItemUtility)
+local ItemStringUtility = _G.ItemStringUtility or require(ReplicatedStorage.Modules.ItemStringUtility)
+
+local InitiateTrade = net:WaitForChild("RF/InitiateTrade")
+local RFUpdateAutoFishingState = net:WaitForChild("RF/UpdateAutoFishingState")
+local RFCancelFishingInputs = net:WaitForChild("RF/CancelFishingInputs")
+
 local Shared = ReplicatedStorage:WaitForChild("Shared", 5)
 local Modules = ReplicatedStorage:WaitForChild("Modules", 5)
 
@@ -247,22 +263,6 @@ local function forceCancelFishing()
         VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
         task.wait(0.1)
         VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-    end)
-    
-    task.wait(0.5)
-    
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local hasRod = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
-            if hasRod then
-                local VIM = game:GetService("VirtualInputManager")
-                VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-                task.wait(0.1)
-                VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-                task.wait(0.3)
-            end
-        end
     end)
     
     task.wait(0.5)
@@ -867,24 +867,6 @@ end)
 
 --// Trade Tab Feature
 Trade:Section({ Title = "Secret Auto Trade" })
-
---// Service and Modules
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local net = ReplicatedStorage:WaitForChild("Packages")
-    :WaitForChild("_Index")
-    :WaitForChild("sleitnick_net@0.2.0")
-    :WaitForChild("net")
-
-local Replion = _G.Replion or require(ReplicatedStorage.Packages.Replion)
-local ItemUtility = _G.ItemUtility or require(ReplicatedStorage.Shared.ItemUtility)
-local ItemStringUtility = _G.ItemStringUtility or require(ReplicatedStorage.Modules.ItemStringUtility)
-
-local InitiateTrade = net:WaitForChild("RF/InitiateTrade")
-local RFUpdateAutoFishingState = net:WaitForChild("RF/UpdateAutoFishingState")
-local RFCancelFishingInputs = net:WaitForChild("RF/CancelFishingInputs")
 
 --// Auto Accept Trade
 pcall(function()
