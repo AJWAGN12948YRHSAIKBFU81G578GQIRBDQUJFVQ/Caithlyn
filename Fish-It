@@ -281,8 +281,6 @@ local function forceCancelFishing()
     end)
     
     task.wait(0.3)
-    
-    enableAutoFishingAndEquipRod()
 end
 
 --// Auto Fish
@@ -880,6 +878,7 @@ pcall(function()
             return oldFirePrompt(self, promptText, ...)
         end
     end
+    enableAutoFishingAndEquipRod()
 end)
 
 Trade:Toggle({
