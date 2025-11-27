@@ -224,6 +224,50 @@ local Trade = Window:Tab({
 --// Automatic Tab Features
 Automatic:Section({ Title = 'Automation' })
 
+--// Force Cancel Function
+local function forceCancelFishing()
+    pcall(function()
+        if RFCancelFishingInputs and RFCancelFishingInputs:IsA("RemoteFunction") then
+            RFCancelFishingInputs:InvokeServer()
+        end
+    end)
+    
+    task.wait(0.3)
+    
+    pcall(function()
+        if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") then
+            RFUpdateAutoFishingState:InvokeServer(false)
+        end
+    end)
+    
+    task.wait(0.3)
+    
+    pcall(function()
+        local VIM = game:GetService("VirtualInputManager")
+        VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+    end)
+    
+    task.wait(0.5)
+    
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local hasRod = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
+            if hasRod then
+                local VIM = game:GetService("VirtualInputManager")
+                VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+                task.wait(0.3)
+            end
+        end
+    end)
+    
+    task.wait(0.5)
+end
+
 --// Auto Fish
 local autoFishWasOn = false
 
@@ -841,50 +885,6 @@ local ItemStringUtility = _G.ItemStringUtility or require(ReplicatedStorage.Modu
 local InitiateTrade = net:WaitForChild("RF/InitiateTrade")
 local RFUpdateAutoFishingState = net:WaitForChild("RF/UpdateAutoFishingState")
 local RFCancelFishingInputs = net:WaitForChild("RF/CancelFishingInputs")
-
---// Force Cancel Function
-local function forceCancelFishing()
-    pcall(function()
-        if RFCancelFishingInputs and RFCancelFishingInputs:IsA("RemoteFunction") then
-            RFCancelFishingInputs:InvokeServer()
-        end
-    end)
-    
-    task.wait(0.3)
-    
-    pcall(function()
-        if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") then
-            RFUpdateAutoFishingState:InvokeServer(false)
-        end
-    end)
-    
-    task.wait(0.3)
-    
-    pcall(function()
-        local VIM = game:GetService("VirtualInputManager")
-        VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-        task.wait(0.1)
-        VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-    end)
-    
-    task.wait(0.5)
-    
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local hasRod = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
-            if hasRod then
-                local VIM = game:GetService("VirtualInputManager")
-                VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-                task.wait(0.1)
-                VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-                task.wait(0.3)
-            end
-        end
-    end)
-    
-    task.wait(0.5)
-end
 
 --// Auto Accept Trade
 pcall(function()
