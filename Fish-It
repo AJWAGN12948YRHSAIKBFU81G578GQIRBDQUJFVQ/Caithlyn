@@ -268,6 +268,48 @@ local function forceCancelFishing()
     task.wait(0.5)
 end
 
+local function disableAutoFishingAndUnequipRod()
+    forceCancelFishing()
+    task.wait(0.5)
+    
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local hasRod = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
+            if hasRod then
+                local VIM = game:GetService("VirtualInputManager")
+                VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+            end
+        end
+    end)
+    
+    task.wait(0.5)
+end
+
+--// Enable Toggle & Equip Rod
+local function enableAutoFishingAndEquipRod()
+    forceCancelFishing()
+    task.wait(0.5)
+
+    pcall(function()
+        local VIM = game:GetService("VirtualInputManager")
+        VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+        task.wait(0.5)
+        VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+        task.wait(0.5)
+    end)
+    
+    pcall(function()
+        if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") then
+            RFUpdateAutoFishingState:InvokeServer(true)
+        end
+    end)
+    
+    task.wait(0.5)
+end
+
 --// Auto Fish
 local autoFishWasOn = false
 
@@ -298,8 +340,6 @@ local function enableAutoFish()
             if not char then return end
             
             local hasRod = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
-            task.wait(0.5)
-            forceCancelFishing()
             task.wait(0.5)
 
             if hasRod then
@@ -875,7 +915,7 @@ pcall(function()
 
     if PromptController and PromptController.FirePrompt then
         local oldFirePrompt = PromptController.FirePrompt
-
+        
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled
                 and type(promptText) == "string"
@@ -1008,45 +1048,6 @@ local function getSecretFishUUIDs()
     return uuids
 end
 
-local function disableAutoFishingAndUnequipRod()
-    forceCancelFishing()
-    task.wait(0.5)
-    
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local hasRod = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
-            if hasRod then
-                local VIM = game:GetService("VirtualInputManager")
-                VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-                task.wait(0.1)
-                VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-            end
-        end
-    end)
-    
-    task.wait(0.5)
-end
-
---// Enable Toggle & Equip Rod
-local function enableAutoFishingAndEquipRod()
-    pcall(function()
-        local VIM = game:GetService("VirtualInputManager")
-        VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-        task.wait(0.5)
-        VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-        task.wait(0.5)
-    end)
-    
-    pcall(function()
-        if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") then
-            RFUpdateAutoFishingState:InvokeServer(true)
-        end
-    end)
-    
-    task.wait(0.5)
-end
-
 --// Auto Trade Running
 local statusParagraph = Trade:Paragraph({
     Title = "Status",
@@ -1072,6 +1073,7 @@ local function startSecretAutoTradeLoop()
             end
 
             tradeState.isTradingNow = true
+            
             disableAutoFishingAndUnequipRod()
             task.wait(0.5)
 
@@ -1122,8 +1124,6 @@ local function startSecretAutoTradeLoop()
                 task.wait(3)
             end
 
-            forceCancelFishing()
-            task.wait(0.5)
             tradeState.isTradingNow = false
             enableAutoFishingAndEquipRod()
             
