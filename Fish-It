@@ -248,11 +248,11 @@ local function isPlayerStuck()
     local timeSinceLastFish = tick() - lastFishTime
     local timeSinceLastCatch = tick() - lastSuccessfulCatch
     
-    if timeSinceLastFish > 35 then
+    if timeSinceLastFish >= 120 then
         return true
     end
     
-    if timeSinceLastCatch > 120 then
+    if timeSinceLastCatch >= 180 then
         return true
     end
     
