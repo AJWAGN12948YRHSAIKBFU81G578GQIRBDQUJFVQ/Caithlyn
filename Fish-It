@@ -306,7 +306,7 @@ local function enableAutoFishingAndEquipRod()
     task.wait(0.5)
 end
 
-local function startAntiStuckMonitor()
+local function enableAutoFish()
     task.spawn(function()
         while autoFishWasOn do
             task.wait(stuckCheckInterval)
@@ -320,10 +320,7 @@ local function startAntiStuckMonitor()
             end
         end
     end)
-end
-
-local function enableAutoFish()
-    startAntiStuckMonitor()
+    
     task.spawn(function()
         while autoFishWasOn do
             enableAutoFishingAndEquipRod()
