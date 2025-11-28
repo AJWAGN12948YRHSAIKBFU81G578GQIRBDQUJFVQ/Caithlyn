@@ -370,9 +370,8 @@ if Config.AutoFish then
 end
 
 --// Auto Sell
-local autoSellRunning = false
 local autoSellWasOn = false
-local autoSellThreshold = 100
+local autoSellThreshold = 10
 
 local function sellAllFish()
     pcall(function()
@@ -397,14 +396,27 @@ local function sellAllFish()
 end
 
 local function autoSellLoop()
+    NotifySuccess('START', 'autoSellLoop() called!', 5)  -- TEST NOTIF PERTAMA
+    
     task.spawn(function()
-        while autoSellRunning do
-            task.wait(8)
-            if getFishCount() >= autoSellThreshold then
+        NotifySuccess('SPAWN', 'task.spawn() executed!', 5)  -- TEST NOTIF KEDUA
+        
+        while autoSellWasOn do
+            task.wait(2)
+            NotifyWarning('LOOP', 'Loop running! autoSellWasOn = ' .. tostring(autoSellWasOn), 5)
+            
+            task.wait(2)
+            local count = getFishCount()
+            NotifyWarning('COUNT', 'Fish count: ' .. tostring(count), 5)
+            
+            if count and count >= autoSellThreshold then
+                NotifySuccess('SELLING', 'Threshold reached!', 3)
                 sellAllFish()
                 task.wait(0.5)
             end
         end
+        
+        NotifyError('STOPPED', 'Loop stopped!', 5)
     end)
 end
 
@@ -414,7 +426,6 @@ Automatic:Toggle({
     Value = Config.AutoSell == true,
     Callback = function(isOn)
         autoSellWasOn = isOn
-        autoSellRunning = isOn
         setFlag("AutoSell", isOn)
         if isOn then autoSellLoop() end
     end
@@ -422,7 +433,6 @@ Automatic:Toggle({
 
 if Config.AutoSell then
     autoSellWasOn = true
-    autoSellRunning = true
     autoSellLoop()
 end
 
@@ -606,50 +616,6 @@ Automatic:Toggle({
 if Config.FPSBoost then
     fpsBoostEnabled = true
     enableFPSBoost()
-end
-
---// Auto Clicker System
-Automatic:Section({ Title = "Auto Clicker" })
-
-local autoClickerRunning = false
-local TAP_X_RATIO = 0.7
-local TAP_Y_RATIO = 0.78
-
-local function clickTapArea()
-    local cam = workspace.CurrentCamera
-    if not cam then return end
-    local size = cam.ViewportSize
-    local x, y = size.X * TAP_X_RATIO, size.Y * TAP_Y_RATIO
-    pcall(function()
-        VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
-        task.wait(0.01)
-        VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
-    end)
-end
-
-local function autoClickerLoop()
-    task.spawn(function()
-        while autoClickerRunning do
-            clickTapArea()
-            task.wait(0.05)
-        end
-    end)
-end
-
-Automatic:Toggle({
-    Title = "Enable Auto Clicker",
-    Desc = "Manually start/stop auto clicker",
-    Value = Config.AutoClicker == true,
-    Callback = function(isOn)
-        autoClickerRunning = isOn
-        setFlag("AutoClicker", isOn)
-        if isOn then autoClickerLoop() end
-    end
-})
-
-if Config.AutoClicker then
-    autoClickerRunning = true
-    autoClickerLoop()
 end
 
 --// Teleport System
@@ -940,23 +906,20 @@ LocalPlayer.CharacterAdded:Connect(function(character)
     task.wait(1)
     lastFishTime = tick()
     lastSuccessfulCatch = tick()
-    autoSellRunning = false
     
     if autoFishWasOn then
         task.wait(0.5)
         enableAutoFish()
     end
+
     if autoSellWasOn then
-        autoSellRunning = true
+        task.wait(0.5)
         autoSellLoop()
     end
+
     if fpsBoostEnabled then
         task.wait(0.5)
         enableFPSBoost()
-    end
-    if autoClickerRunning then
-        task.wait(1)
-        autoClickerLoop()
     end
     if activeIslandIndex and toggleStates[activeIslandIndex] then
         local island = islands[activeIslandIndex]
