@@ -283,7 +283,7 @@ local function enhancedForceCancelFishing()
 
     for i = 1, 3 do
         local success = pcall(function()
-            if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") then
+            if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") and RFUpdateAutoFishingState:InvokeServer(true) then
                 RFUpdateAutoFishingState:InvokeServer(false)
             end
         end)
@@ -341,7 +341,7 @@ local function enableAutoFishingAndEquipRod()
     local stable = false
     for i = 1, 3 do
         local noError, serverResult = pcall(function()
-            if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") then
+            if RFUpdateAutoFishingState and RFUpdateAutoFishingState:IsA("RemoteFunction") and RFUpdateAutoFishingState:InvokeServer(false) then
                 return RFUpdateAutoFishingState:InvokeServer(true)
             end
             return false
