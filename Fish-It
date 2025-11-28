@@ -189,20 +189,28 @@ local stuckCheckInterval = 20
 
 local function getFishCount()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return 0 end
-    
+    if not playerGui then 
+        return 0 
+    end
+
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") then
             for _, child in ipairs(gui:GetDescendants()) do
                 if child:IsA("TextLabel") and child.Name == "BagSize" and child.Visible then
                     local match = child.Text:match("([%d,]+)%s*/")
                     if match then
-                        return tonumber(match:gsub(",", ""):gsub("%s+", ""))
+                        local cleaned = match:gsub(",", "")
+                        cleaned = cleaned:gsub("%s+", "")
+                        local num = tonumber(cleaned)
+                        if num then
+                            return num
+                        end
                     end
                 end
             end
         end
     end
+
     return 0
 end
 
@@ -371,7 +379,8 @@ end
 
 --// Auto Sell
 local autoSellWasOn = false
-local autoSellThreshold = 10
+local autoSellRunning = false
+local autoSellThreshold = 100
 
 local function sellAllFish()
     pcall(function()
@@ -396,27 +405,14 @@ local function sellAllFish()
 end
 
 local function autoSellLoop()
-    NotifySuccess('START', 'autoSellLoop() called!', 5)  -- TEST NOTIF PERTAMA
-    
     task.spawn(function()
-        NotifySuccess('SPAWN', 'task.spawn() executed!', 5)  -- TEST NOTIF KEDUA
-        
-        while autoSellWasOn do
-            task.wait(2)
-            NotifyWarning('LOOP', 'Loop running! autoSellWasOn = ' .. tostring(autoSellWasOn), 5)
-            
-            task.wait(2)
-            local count = getFishCount()
-            NotifyWarning('COUNT', 'Fish count: ' .. tostring(count), 5)
-            
-            if count and count >= autoSellThreshold then
-                NotifySuccess('SELLING', 'Threshold reached!', 3)
+        while autoSellRunning do
+            task.wait(6)
+            if getFishCount() >= autoSellThreshold then
                 sellAllFish()
-                task.wait(0.5)
+                task.wait(1)
             end
         end
-        
-        NotifyError('STOPPED', 'Loop stopped!', 5)
     end)
 end
 
@@ -426,6 +422,7 @@ Automatic:Toggle({
     Value = Config.AutoSell == true,
     Callback = function(isOn)
         autoSellWasOn = isOn
+        autoSellRunning = isOn
         setFlag("AutoSell", isOn)
         if isOn then autoSellLoop() end
     end
@@ -433,6 +430,7 @@ Automatic:Toggle({
 
 if Config.AutoSell then
     autoSellWasOn = true
+    autoSellRunning = true
     autoSellLoop()
 end
 
@@ -913,6 +911,7 @@ LocalPlayer.CharacterAdded:Connect(function(character)
     end
 
     if autoSellWasOn then
+        autoSellRunning = true
         task.wait(0.5)
         autoSellLoop()
     end
