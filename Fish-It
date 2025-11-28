@@ -266,7 +266,7 @@ local function isPlayerStuck()
             if gui:IsA("ScreenGui") and gui.Enabled then
                 local nameLower = gui.Name:lower()
                 if (nameLower:find("fish") or nameLower:find("reel") or nameLower:find("mini")) 
-                   and timeSinceLastFish > 40 then
+                   and timeSinceLastFish >= 80 then
                     return true
                 end
             end
