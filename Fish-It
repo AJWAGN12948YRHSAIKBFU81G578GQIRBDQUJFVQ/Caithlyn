@@ -699,8 +699,8 @@ pcall(function()
         local oldFirePrompt = PromptController.FirePrompt
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
+                disableAutoFishForTrade()
                 return Promise.new(function(resolve)
-                    disableAutoFishForTrade()
                     task.wait(2.5)
                     resolve(true)
                 end)
