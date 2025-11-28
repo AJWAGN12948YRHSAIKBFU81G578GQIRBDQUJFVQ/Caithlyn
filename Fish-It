@@ -183,6 +183,7 @@ local Trade = Window:Tab({ Title = "Trade", Icon = "handshake" })
 Automatic:Section({ Title = 'Automation' })
 
 local autoFishWasOn = false
+local autoFishToggleRef = nil
 local lastFishTime = tick()
 local lastSuccessfulCatch = tick()
 local stuckCheckInterval = 20
@@ -355,7 +356,7 @@ task.spawn(function()
     end
 end)
 
-Automatic:Toggle({
+autoFishToggleRef = Automatic:Toggle({
     Title = 'Auto Fish',
     Desc = 'Fishing mode Legit',
     Value = Config.AutoFish == true,
@@ -611,6 +612,7 @@ Automatic:Toggle({
     end
 })
 
+
 if Config.FPSBoost then
     fpsBoostEnabled = true
     enableFPSBoost()
@@ -624,6 +626,7 @@ local islands = {
     { Name = "Esoteric", Position = Vector3.new(3207.41, -1302.86, 1444.84), LookAt = Vector3.new(3250.56, -1302.86, 1419.57) },
     { Name = "Treasure", Position = Vector3.new(-3611.89, -279.07, -1589.51), LookAt = Vector3.new(-3619.21, -286.53, -1602.57) }
 }
+
 
 Teleport:Section({Title = 'Teleport to Island'})
 local activeIslandIndex = nil
@@ -672,6 +675,23 @@ end
 --// Trade System
 Trade:Section({ Title = "Secret Auto Trade" })
 
+local autoFishStateBeforeTrade = false
+
+local function disableAutoFishForTrade()
+    if autoFishToggleRef and autoFishWasOn then
+        autoFishStateBeforeTrade = true
+        autoFishToggleRef:Set(false)
+    end
+end
+
+local function enableAutoFishAfterTrade()
+    if autoFishToggleRef and autoFishStateBeforeTrade then
+        task.wait(1)
+        autoFishToggleRef:Set(true)
+        autoFishStateBeforeTrade = false
+    end
+end
+
 pcall(function()
     local PromptController = _G.PromptController or ReplicatedStorage:WaitForChild("Controllers").PromptController
     local Promise = _G.Promise or require(ReplicatedStorage.Packages.Promise)
@@ -680,15 +700,15 @@ pcall(function()
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
-                    enhancedForceCancelFishing()
-                    task.wait(0.5)
+                    disableAutoFishForTrade()
+                    task.wait(2.5)
                     resolve(true)
                 end)
             end
             return oldFirePrompt(self, promptText, ...)
         end
     end
-    enableAutoFishingAndEquipRod()
+    enableAutoFishAfterTrade()
 end)
 
 Trade:Toggle({
@@ -705,6 +725,7 @@ Trade:Toggle({
         end
     end
 })
+
 
 if Config.AutoAcceptTrade then
     _G.AutoAcceptTradeEnabled = true
@@ -810,14 +831,15 @@ local function startSecretAutoTradeLoop()
             local count = #secretList
             
             if count == 0 then
-                statusParagraph:SetDesc("Inventory empty. Waiting 60s before next check...")
+                statusParagraph:SetDesc("Inventory empty. Re-enabling auto fish...")
+                enableAutoFishAfterTrade()
                 task.wait(60)
                 continue
             end
             
+            disableAutoFishForTrade()
             tradeState.isTradingNow = true
-            enhancedForceCancelFishing()
-            task.wait(0.5)
+            
             statusParagraph:SetDesc("Found " .. count .. " secret fish! Starting trade...")
             
             local targetId = tradeState.selectedPlayerId
@@ -832,11 +854,13 @@ local function startSecretAutoTradeLoop()
                     break
                 end
                 
+                disableAutoFishForTrade()
+
                 for i, item in ipairs(secretList) do
                     if not tradeState.loopEnabled then
                         statusParagraph:SetDesc("Trade loop stopped by user.")
                         tradeState.isTradingNow = false
-                        enableAutoFishingAndEquipRod()
+                        enableAutoFishAfterTrade()
                         return
                     end
                     statusParagraph:SetDesc(string.format("Sending %d/%d to %s\n%s", i, count, targetName, item.Name))
@@ -851,15 +875,16 @@ local function startSecretAutoTradeLoop()
             end
             
             tradeState.isTradingNow = false
-            enableAutoFishingAndEquipRod()
+            enableAutoFishAfterTrade()
+            
             if tradeState.loopEnabled then
-                statusParagraph:SetDesc(string.format("Batch complete! Sent %d fish to %s.\nFishing resumed. Next check in 60s...", totalSent, targetName))
+                statusParagraph:SetDesc(string.format("Batch complete! Sent %d fish to %s.\nNext check in 60s...", totalSent, targetName))
                 task.wait(60)
             end
         end
         tradeState.isTradingNow = false
-        enableAutoFishingAndEquipRod()
-        statusParagraph:SetDesc("Auto trade loop stopped. Fishing resumed.")
+        enableAutoFishAfterTrade()
+        statusParagraph:SetDesc("Auto trade loop stopped.")
     end)
 end
 
@@ -880,7 +905,7 @@ Trade:Toggle({
             NotifySuccess("Auto Trade", "Auto trade loop started.", 2)
         else
             if tradeState.isTradingNow then
-                enableAutoFishingAndEquipRod()
+                enableAutoFishAfterTrade()
             end
             NotifyWarning("Auto Trade", "Auto trade loop stopped.", 2)
         end
