@@ -310,7 +310,7 @@ local function enableAutoFish()
     task.spawn(function()
         while autoFishWasOn do
             task.wait(stuckCheckInterval)
-            if autoFishWasOn and isPlayerStuck() then
+            if isPlayerStuck() then
                 task.spawn(function()
                     enhancedForceCancelFishing()
                     task.wait(0.5)
