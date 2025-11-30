@@ -178,6 +178,7 @@ Window:EditOpenButton({
 local Automatic = Window:Tab({ Title = 'Automatic', Icon = 'play' })
 local Teleport = Window:Tab({ Title = 'Teleport', Icon = 'navigation' })
 local Trade = Window:Tab({ Title = "Trade", Icon = "handshake" })
+local Shop = Window:Tab({ Title = "Shop", Icon = "shopping-bag" })
 
 --// Auto Fishing
 Automatic:Section({ Title = 'Automation' })
@@ -223,7 +224,7 @@ local function isGameAutoFishEnabled()
     return success and result or false
 end
 
-local function disableAutoFishingAndEquipRod()
+local function disableAutoFishingAndUnequipRod()
     if isGameAutoFishEnabled() then
         for i = 1, 3 do
             pcall(function()
@@ -324,7 +325,7 @@ Automatic:Toggle({
             lastSuccessfulCatch = tick()
             enableAutoFish()
         else
-            disableAutoFishingAndEquipRod()
+            disableAutoFishingAndUnequipRod()
         end
     end
 })
@@ -634,9 +635,15 @@ pcall(function()
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
+                    disableAutoFishingAndUnequipRod()
                     task.wait(2.5)
                     fireReelRemote()
+                    task.wait(0.5)
                     resolve(true)
+                    task.wait(0.5)
+                    disableAutoFishingAndUnequipRod()
+                    task.wait(0.5)
+                    fireReelRemote()
                 end)
             end
             return oldFirePrompt(self, promptText, ...)
