@@ -9,6 +9,8 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
+local VIM = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
 
 --// Player References
 local LocalPlayer = Players.LocalPlayer
@@ -185,39 +187,85 @@ local Teleport = Window:Tab({ Title = 'Teleport', Icon = 'navigation' })
 local Trade = Window:Tab({ Title = "Trade", Icon = "handshake" })
 local Shop = Window:Tab({ Title = "Shop", Icon = "shopping-bag" })
 
+
 --// Auto Fishing
 Automatic:Section({ Title = 'Automation' })
 
 local autoFishWasOn = false
-local lastFishTime = tick()
-local lastSuccessfulCatch = tick()
-local stuckCheckInterval = 20
+local autoClickerEnabled = false
+local clickInterval = 0.008
+local lastClickTime = 0
+local clickCount = 0
 
-local function getFishCount()
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        userIsInteracting = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        task.wait(0.1)
+        userIsInteracting = false
+    end
+end)
+
+local function findTapButton()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then 
-        return 0 
-    end
+    if not playerGui then return nil end
+    
+    local hudGui = playerGui:FindFirstChild("HUD")
+    if not hudGui or not hudGui.Enabled then return nil end
+    
+    local tapButton = hudGui:FindFirstChild("MobileFishingButton")
+    if not tapButton or not tapButton.Visible then return nil end
+    
+    return tapButton
+end
 
-    for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") then
-            for _, child in ipairs(gui:GetDescendants()) do
-                if child:IsA("TextLabel") and child.Name == "BagSize" and child.Visible then
-                    local match = child.Text:match("([%d,]+)%s*/")
-                    if match then
-                        local cleaned = match:gsub(",", "")
-                        cleaned = cleaned:gsub("%s+", "")
-                        local num = tonumber(cleaned)
-                        if num then
-                            return num
-                        end
-                    end
-                end
-            end
+local function getClickPosition()
+    local tapButton = findTapButton()
+    if tapButton then
+        local pos = tapButton.AbsolutePosition
+        local size = tapButton.AbsoluteSize
+        return Vector2.new(
+            pos.X + size.X / 2,
+            pos.Y + size.Y / 2 + 50
+        ), "TAP Button"
+    end
+    
+    return nil, "No target"
+end
+
+local function performBackgroundClick()
+    if userIsInteracting then return end
+    
+    local now = tick()
+    if now - lastClickTime < clickInterval then return end
+    
+    pcall(function()
+        local pos, areaName = getClickPosition()
+        
+        if pos then
+            VIM:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 0)
+            task.wait(0.01)
+            VIM:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
+            
+            clickCount = clickCount + 1
+            lastClickTime = now
         end
-    end
+    end)
+end
 
-    return 0
+local function autoClickerLoop()
+    task.spawn(function()
+        while autoClickerEnabled do
+            performBackgroundClick()
+            task.wait(clickInterval)
+        end
+    end)
 end
 
 local function fireReelRemote()
@@ -260,10 +308,10 @@ local function disableAutoFishingAndUnequipRod()
     if char then
         for attempt = 1, 3 do
             pcall(function()
-                game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0"):WaitForChild("net"):WaitForChild("RE/UnequipToolFromHotbar"):FireServer()
+                net:WaitForChild("RE/UnequipToolFromHotbar"):FireServer()
             end)
             task.wait(0.1)
-            if char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!") then break end
+            if not char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!") then break end
         end
     end
     task.wait(0.1)
@@ -277,7 +325,7 @@ local function enableAutoFishingAndEquipRod()
     if hasRod then
         for attempt = 1, 3 do
             pcall(function()
-                game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0"):WaitForChild("net"):WaitForChild("RE/EquipToolFromHotbar"):FireServer(1)
+                net:WaitForChild("RE/EquipToolFromHotbar"):FireServer(1)
             end)
             task.wait(0.1)
             if not char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!") then break end
@@ -311,15 +359,17 @@ end
 
 Automatic:Toggle({
     Title = 'Auto Fish',
-    Desc = 'Fishing mode Legit',
+    Desc = 'Virtualize clicker',
     Value = Config.AutoFish == true,
     Callback = function(isOn)
         autoFishWasOn = isOn
+        autoClickerEnabled = isOn
         setFlag("AutoFish", isOn)
+        
         if isOn then
-            lastFishTime = tick()
-            lastSuccessfulCatch = tick()
+            clickCount = 0
             enableAutoFish()
+            autoClickerLoop()
         else
             disableAutoFishingAndUnequipRod()
         end
@@ -328,12 +378,41 @@ Automatic:Toggle({
 
 if Config.AutoFish then
     autoFishWasOn = true
+    autoClickerEnabled = true
     enableAutoFish()
+    autoClickerLoop()
 end
 
 --// Auto Sell
 local autoSellWasOn = false
 local autoSellThreshold = 100
+
+local function getFishCount()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then 
+        return 0 
+    end
+
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("TextLabel") and child.Name == "BagSize" and child.Visible then
+                    local match = child.Text:match("([%d,]+)%s*/")
+                    if match then
+                        local cleaned = match:gsub(",", "")
+                        cleaned = cleaned:gsub("%s+", "")
+                        local num = tonumber(cleaned)
+                        if num then
+                            return num
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return 0
+end
 
 local function sellAllFish()
     pcall(function()
@@ -630,16 +709,12 @@ pcall(function()
                 return Promise.new(function(resolve)
                     task.wait(2)
                     disableAutoFishingAndUnequipRod()
-                    task.wait(0.1)
-                    fireReelRemote()
 
                     task.wait(0.3)
                     resolve(true)
 
                     task.wait(0.3)
                     disableAutoFishingAndUnequipRod()
-                    task.wait(0.1)
-                    fireReelRemote()
                 end)
             end
             return oldFirePrompt(self, promptText, ...)
@@ -1175,8 +1250,6 @@ Shop:Button({
 --// Respawn Handler
 LocalPlayer.CharacterAdded:Connect(function(character)
     task.wait(1)
-    lastFishTime = tick()
-    lastSuccessfulCatch = tick()
     
     if autoFishWasOn then
         task.wait(0.5)
