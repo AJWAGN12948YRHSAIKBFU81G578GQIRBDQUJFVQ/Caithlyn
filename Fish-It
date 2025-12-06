@@ -726,6 +726,7 @@ pcall(function()
                             autoFishWasOn = true
                             autoClickerEnabled = true
                             enableAutoFishingAndEquipRod()
+                            autoClickerLoop()
                         end
                     end)
                 end)
