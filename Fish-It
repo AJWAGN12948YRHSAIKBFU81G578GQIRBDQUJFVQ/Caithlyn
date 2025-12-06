@@ -165,20 +165,21 @@ local Window = WindUI:CreateWindow({
     ScrollBarEnabled = true,
     HideSearchBar = true,
     NewElements = true,
+    
     User = {
         Enabled = true,
         Anonymous = false,
         Callback = function() end,
+    },
+    
+    EditOpenButton = {
+        Title = "Caithlyn",
+        Icon = "crown",
+        CornerRadius = UDim.new(0, 30),
+        StrokeThickness = 2,
+        Color = ColorSequence.new(Color3.fromHex("FFD75F"), Color3.fromHex("082A4D")),
+        Draggable = true,
     }
-})
-
-Window:EditOpenButton({
-    Title = "Caithlyn",
-    Icon = "crown",
-    CornerRadius = UDim.new(0, 30),
-    StrokeThickness = 2,
-    Color = ColorSequence.new(Color3.fromHex("FFD75F"), Color3.fromHex("082A4D")),
-    Draggable = true,
 })
 
 --// Tabs
@@ -193,7 +194,7 @@ Automatic:Section({ Title = 'Automation' })
 
 local autoFishWasOn = false
 local autoClickerEnabled = false
-local clickInterval = 0.003
+local clickInterval = 0.05
 local lastClickTime = 0
 local clickCount = 0
 
@@ -275,9 +276,8 @@ local function fireReelRemote()
                 RFCancelFishingInputs:InvokeServer()
             end
         end)
-        task.wait(0.2)
+        task.wait(0.1)
     end
-    task.wait(0.1)
 end
 
 local function isGameAutoFishEnabled()
@@ -634,7 +634,11 @@ Automatic:Toggle({
     Callback = function(isOn)
         fpsBoostEnabled = isOn
         setFlag("FPSBoost", isOn)
-        if isOn then enableFPSBoost() else disableFPSBoost() end
+        if isOn then 
+            enableFPSBoost() 
+        else 
+            disableFPSBoost() 
+        end
     end
 })
 
@@ -707,14 +711,23 @@ pcall(function()
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
-                    task.wait(2)
+                    local wasAutoFishing = autoFishWasOn
+                    autoFishWasOn = false
+                    autoClickerEnabled = false
                     disableAutoFishingAndUnequipRod()
 
-                    task.wait(0.3)
+                    task.wait(3)
                     resolve(true)
-
-                    task.wait(0.3)
-                    disableAutoFishingAndUnequipRod()
+                    
+                    task.spawn(function()
+                        task.wait(3)
+                        
+                        if wasAutoFishing then
+                            autoFishWasOn = true
+                            autoClickerEnabled = true
+                            enableAutoFishingAndEquipRod()
+                        end
+                    end)
                 end)
             end
             return oldFirePrompt(self, promptText, ...)
@@ -724,7 +737,7 @@ end)
 
 Trade:Toggle({
     Title = "Enable Auto Accept Trade",
-    Desc = "Automatically accepts incoming trade requests (with anti-stuck).",
+    Desc = "Automatically accepts incoming trade requests.",
     Value = Config.AutoAcceptTrade == true,
     Callback = function(value)
         _G.AutoAcceptTradeEnabled = value
@@ -867,7 +880,7 @@ local statusParagraph = Trade:Paragraph({
     Desc = "Waiting to start..."
 })
 
---// Function to teleport to target player
+--// Function teleport to target player
 local function teleportToTarget()
     if not tradeState.selectedPlayerName then return false end
     
@@ -903,21 +916,18 @@ local function startSecretAutoTradeLoop()
             if count == 0 then
                 statusParagraph:SetDesc("No secret fish. Waiting 30s before next check...")
                 task.wait(30)
-                fireReelRemote()
                 continue
             end
             
             if not isTargetPlayerInGame() then
                 statusParagraph:SetDesc("Have " .. count .. " fish but target offline.\nFishing continues...")
-                fireReelRemote()
-                task.wait(5)
+                task.wait(2)
                 continue
             end
             
             local targetPlayer = Players:FindFirstChild(tradeState.selectedPlayerName)
             if not targetPlayer then
                 task.wait(2)
-                fireReelRemote()
                 continue
             end
             
@@ -936,7 +946,6 @@ local function startSecretAutoTradeLoop()
             
             if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 statusParagraph:SetDesc("Character not loaded. Retrying...")
-                fireReelRemote()
                 task.wait(3)
                 continue
             end
@@ -945,7 +954,6 @@ local function startSecretAutoTradeLoop()
             local teleportSuccess = teleportToTarget()
             if not teleportSuccess then
                 statusParagraph:SetDesc("Teleport failed. Retrying in 3s...")
-                fireReelRemote()
                 task.wait(3)
                 continue
             end
@@ -962,7 +970,6 @@ local function startSecretAutoTradeLoop()
             while tradeState.loopEnabled do
                 if not isTargetPlayerInGame() then
                     statusParagraph:SetDesc("Target went offline during trade.\nBack to fishing...")
-                    fireReelRemote()
                     break
                 end
                 
@@ -981,14 +988,12 @@ local function startSecretAutoTradeLoop()
                 for i, item in ipairs(secretList) do
                     if not tradeState.loopEnabled then
                         statusParagraph:SetDesc("Trade stopped by user.")
-                        fireReelRemote()
                         tradeState.isTradingNow = false
                         return
                     end
                     
                     if not isTargetPlayerInGame() then
                         statusParagraph:SetDesc("Target disconnected!")
-                        fireReelRemote()
                         break
                     end
                     
@@ -1016,17 +1021,16 @@ local function startSecretAutoTradeLoop()
                                     task.wait(0.5)
                                 end
                             else
-                                fireReelRemote()
                                 break
                             end
                         end
                     end
-                    
-                    task.wait(1.5)
+
+                    fireReelRemote()
+                    task.wait(7)
                 end
                 
                 if not isTargetPlayerInGame() then
-                    fireReelRemote()
                     break
                 end
                 
@@ -1038,18 +1042,15 @@ local function startSecretAutoTradeLoop()
             
             if totalSent > 0 then
                 statusParagraph:SetDesc(string.format("Sent %d fish to %s!\nBack to fishing.", totalSent, targetName))
-                fireReelRemote()
                 NotifySuccess("Trade Complete", "Sent " .. totalSent .. " fish!", 3)
             else
                 statusParagraph:SetDesc("Trade session ended. Back to fishing.")
-                fireReelRemote()
             end
             task.wait(10)
         end
         
         tradeState.isTradingNow = false
         statusParagraph:SetDesc("Auto trade disabled.")
-        fireReelRemote()
     end)
 end
 
@@ -1165,11 +1166,7 @@ Shop:Button({
             return
         end
         
-        fireReelRemote()
-        task.wait(0.5)
         buyItem('Rod', rodId, selectedRod)
-        task.wait(0.5)
-        enableAutoFishingAndEquipRod()
     end
 })
 
@@ -1250,7 +1247,15 @@ Shop:Button({
 --// Respawn Handler
 LocalPlayer.CharacterAdded:Connect(function(character)
     task.wait(1)
-    
+    if activeIslandIndex and toggleStates[activeIslandIndex] then
+        local island = islands[activeIslandIndex]
+        character:WaitForChild("HumanoidRootPart")
+        task.wait(0.5)
+        if character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
+        end
+    end
+
     if autoFishWasOn then
         task.wait(0.5)
         enableAutoFish()
@@ -1259,14 +1264,5 @@ LocalPlayer.CharacterAdded:Connect(function(character)
     if autoSellWasOn then
         task.wait(0.5)
         autoSellLoop()
-    end
-
-    if activeIslandIndex and toggleStates[activeIslandIndex] then
-        local island = islands[activeIslandIndex]
-        character:WaitForChild("HumanoidRootPart")
-        task.wait(0.5)
-        if character:FindFirstChild("HumanoidRootPart") then
-            character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
-        end
     end
 end)
