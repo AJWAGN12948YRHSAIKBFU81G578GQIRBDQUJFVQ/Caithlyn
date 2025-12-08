@@ -711,10 +711,14 @@ pcall(function()
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
-                    task.wait(5)
-
+                    task.wait(6)
                     disableAutoFishingAndUnequipRod()
                     resolve(true)
+                    
+                    task.spawn(function()
+                        task.wait(1)
+                        enableAutoFishingAndEquipRod()
+                    end)
                 end)
             end
             return oldFirePrompt(self, promptText, ...)
