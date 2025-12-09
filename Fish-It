@@ -979,7 +979,7 @@ local function startSecretAutoTradeLoop()
             
             if not isTargetPlayerInGame() then
                 statusParagraph:SetDesc("Have " .. count .. " fish but target offline.\nFishing continues...")
-                task.wait(2)
+                task.wait(15)
                 continue
             end
             
@@ -1028,14 +1028,6 @@ local function startSecretAutoTradeLoop()
             while tradeState.loopEnabled do
                 if not isTargetPlayerInGame() then
                     statusParagraph:SetDesc("Target went offline during trade.\nBack to fishing...")
-                    if activeIslandIndex and toggleStates[activeIslandIndex] then
-                        local island = islands[activeIslandIndex]
-                        character:WaitForChild("HumanoidRootPart")
-                        task.wait(0.5)
-                        if character:FindFirstChild("HumanoidRootPart") then
-                            character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
-                        end
-                    end
                     break
                 end
                 
