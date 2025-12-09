@@ -299,8 +299,8 @@ local function getClickPosition()
         local pos = tapButton.AbsolutePosition
         local size = tapButton.AbsoluteSize
         return Vector2.new(
-            pos.X + size.X / 2 - 150,
-            pos.Y + size.Y / 2 + 50
+            pos.X + size.X / 2,
+            pos.Y + size.Y / 2 - 500
         ), "TAP Button"
     end
     
