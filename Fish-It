@@ -261,7 +261,7 @@ Automatic:Section({ Title = 'Automation' })
 
 local autoFishWasOn = false
 local autoClickerEnabled = false
-local clickInterval = 0.08
+local clickInterval = 0.05
 local lastClickTime = 0
 local clickCount = 0
 
@@ -979,13 +979,13 @@ local function startSecretAutoTradeLoop()
             
             if not isTargetPlayerInGame() then
                 statusParagraph:SetDesc("Have " .. count .. " fish but target offline.\nFishing continues...")
-                task.wait(15)
+                task.wait(30)
                 continue
             end
             
             local targetPlayer = Players:FindFirstChild(tradeState.selectedPlayerName)
             if not targetPlayer then
-                task.wait(2)
+                task.wait(5)
                 continue
             end
             
