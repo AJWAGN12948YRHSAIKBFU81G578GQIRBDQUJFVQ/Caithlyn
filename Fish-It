@@ -712,12 +712,12 @@ pcall(function()
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
                     task.wait(3)
-                    disableAutoFishingAndUnequipRod()
+                    fireReelRemote()
                     resolve(true)
                     
                     task.spawn(function()
                         task.wait(2)
-                        enableAutoFishingAndEquipRod()
+                        fireReelRemote()
                     end)
                 end)
             end
