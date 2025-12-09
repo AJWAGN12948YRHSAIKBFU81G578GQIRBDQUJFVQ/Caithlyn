@@ -1,6 +1,6 @@
 
 --// Load WindUI
-local Version = "1.6.53"
+local Version = "1.6.62"
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
 
 --// Services
@@ -26,6 +26,9 @@ local RFCancelFishingInputs = net:WaitForChild("RF/CancelFishingInputs")
 local RFPurchaseBait = net:WaitForChild("RF/PurchaseBait")
 local RFPurchaseRod = net:WaitForChild("RF/PurchaseFishingRod")
 local RFPurchaseMerchant = net:WaitForChild("RF/PurchaseMarketItem")
+
+local REEquipItem = net:WaitForChild("RE/EquipItem")
+local REEquipBait = net:WaitForChild("RE/EquipBait")
 
 --// Modules
 local Constants = require(ReplicatedStorage:WaitForChild("Shared", 20):WaitForChild("Constants"))
@@ -181,6 +184,70 @@ local Window = WindUI:CreateWindow({
         Draggable = true,
     }
 })
+
+task.spawn(function()
+    local TweenService = game:GetService("TweenService")
+    local ButtonUI = Instance.new("ScreenGui")
+    ButtonUI.Name = "CaithlynButton"
+    ButtonUI.Parent = game:GetService("CoreGui")
+    ButtonUI.ResetOnSpawn = false
+    ButtonUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local Button = Instance.new("TextButton")
+    Button.Parent = ButtonUI
+    Button.Size = UDim2.new(0, 70, 0, 70)
+    Button.Position = UDim2.new(0, 10, 0.5, -35)
+    Button.BackgroundColor3 = Color3.fromHex("082A4D")
+    Button.BackgroundTransparency = 0
+    Button.Text = ""
+    Button.Active = true
+    Button.Draggable = true
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 18)
+    Corner.Parent = Button
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Color3.fromHex("FFD75F")
+    Stroke.Thickness = 3
+    Stroke.Parent = Button
+
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromHex("0A3A65")
+        }):Play()
+    end)
+
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromHex("082A4D")
+        }):Play()
+    end)
+
+    Button.MouseButton1Down:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {
+            Size = UDim2.new(0, 65, 0, 65)
+        }):Play()
+    end)
+
+    Button.MouseButton1Up:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {
+            Size = UDim2.new(0, 70, 0, 70)
+        }):Play()
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+        pcall(function()
+            Window:Toggle()
+            local isOpen = Window:IsOpen()
+            if isOpen then
+                Stroke.Color = Color3.fromHex("FFD75F")
+            else
+                Stroke.Color = Color3.fromHex("FF6B6B")
+            end
+        end)
+    end)
+end)
 
 --// Tabs
 local Automatic = Window:Tab({ Title = 'Automatic', Icon = 'play' })
@@ -961,6 +1028,14 @@ local function startSecretAutoTradeLoop()
             while tradeState.loopEnabled do
                 if not isTargetPlayerInGame() then
                     statusParagraph:SetDesc("Target went offline during trade.\nBack to fishing...")
+                    if activeIslandIndex and toggleStates[activeIslandIndex] then
+                        local island = islands[activeIslandIndex]
+                        character:WaitForChild("HumanoidRootPart")
+                        task.wait(0.5)
+                        if character:FindFirstChild("HumanoidRootPart") then
+                            character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
+                        end
+                    end
                     break
                 end
                 
@@ -970,6 +1045,15 @@ local function startSecretAutoTradeLoop()
                 if count == 0 then
                     statusParagraph:SetDesc("All fish traded! Inventory empty.\nBack to fishing!")
                     fireReelRemote()
+                    
+                    if activeIslandIndex and toggleStates[activeIslandIndex] then
+                        local island = islands[activeIslandIndex]
+                        character:WaitForChild("HumanoidRootPart")
+                        task.wait(0.5)
+                        if character:FindFirstChild("HumanoidRootPart") then
+                            character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
+                        end
+                    end
                     break
                 end
                 
@@ -1084,16 +1168,28 @@ end
 --// Auto Shop
 --// Item Data
 local rodData = {
-    ["Midnight Rod"] = 80,
-    ["Steampunk Rod"] = 6,
-    ["Flourescent Rod"] = 255,
-    ["Astral Rod"] = 5,
-    ["Ares Rod"] = 126
+    ["Midnight Rod"] = {
+        purchaseId = 80,
+        uuid = "1d4f1d05-9390-4e28-afd9-d47b4d84a41d"
+    },
+    ["Steampunk Rod"] = {
+        purchaseId = 6,
+        uuid = "af0b1b0a-528c-402b-b8db-5e06d11b2035"
+    },
+    ["Flourescent Rod"] = {
+        purchaseId = 255,
+        uuid = "08883435-d3fc-4c42-bde8-8d15318fedf0"
+    },
+    ["Ares Rod"] = {
+        purchaseId = 126,
+        uuid = "71c3eb06-ee31-482f-b860-19525c773b70"
+    }
 }
 
 local baitData = {
     ["Corrupt Bait"] = 15,
-    ["Aether Bait"] = 16
+    ["Aether Bait"] = 16,
+    ["Singularity Bait"] = 18
 }
 
 local merchantData = {
@@ -1101,8 +1197,8 @@ local merchantData = {
     ["Singularity Bait"] = 3,
 }
 
---// Purchase Function
-local function buyItem(itemType, itemId, itemName)
+--// Purchase Function (Modified: Auto-equip after buy)
+local function buyItem(itemType, itemData, itemName)
     local remote = itemType == 'Bait' and RFPurchaseBait or 
                    itemType == 'Rod' and RFPurchaseRod or 
                    itemType == 'Merchant' and RFPurchaseMerchant
@@ -1111,12 +1207,31 @@ local function buyItem(itemType, itemId, itemName)
         return false
     end
     
+    local purchaseId = type(itemData) == "table" and itemData.purchaseId or itemData
+    
     local success, result = pcall(function()
-        return remote:InvokeServer(itemId)
+        return remote:InvokeServer(purchaseId)
     end)
     
     if success then
         NotifySuccess("Purchase Success", "Bought: " .. itemName, 2)
+        task.wait(0.5)
+        if itemType == 'Rod' and type(itemData) == "table" then
+            if itemData.uuid and itemData.uuid ~= "UNKNOWN" then
+                pcall(function()
+                    REEquipItem:FireServer(itemData.uuid, "Fishing Rods")
+                    NotifySuccess("Equipped", itemName .. " equipped!", 2)
+                end)
+            else
+                NotifyWarning("Equip Skipped", "UUID not available for " .. itemName, 2)
+            end
+        elseif itemType == 'Bait' then
+            pcall(function()
+                REEquipBait:FireServer(purchaseId)
+                NotifySuccess("Equipped", itemName .. " equipped!", 2)
+            end)
+        end
+        
         return true
     else
         NotifyError("Purchase Failed", tostring(result), 2)
