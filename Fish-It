@@ -867,7 +867,6 @@ local playerDropdown = Trade:Dropdown({
             NotifySuccess("Target Selected", "Target set to: " .. player.Name, 3)
         else
             tradeState.selectedPlayerId = nil
-            NotifyError("Target Error", "Player not found!", 2)
         end
     end
 })
@@ -979,7 +978,7 @@ local function startSecretAutoTradeLoop()
             
             if not isTargetPlayerInGame() then
                 statusParagraph:SetDesc("Have " .. count .. " fish but target offline.\nFishing continues...")
-                task.wait(30)
+                task.wait(15)
                 continue
             end
             
@@ -1040,6 +1039,7 @@ local function startSecretAutoTradeLoop()
                     
                     if activeIslandIndex and toggleStates[activeIslandIndex] then
                         local island = islands[activeIslandIndex]
+                        local character = LocalPlayer.Character
                         character:WaitForChild("HumanoidRootPart")
                         task.wait(0.5)
                         if character:FindFirstChild("HumanoidRootPart") then
@@ -1094,7 +1094,7 @@ local function startSecretAutoTradeLoop()
                     end
 
                     fireReelRemote()
-                    task.wait(7)
+                    task.wait(5)
                 end
                 
                 if not isTargetPlayerInGame() then
@@ -1113,7 +1113,7 @@ local function startSecretAutoTradeLoop()
             else
                 statusParagraph:SetDesc("Trade session ended. Back to fishing.")
             end
-            task.wait(10)
+            task.wait(5)
         end
         
         tradeState.isTradingNow = false
