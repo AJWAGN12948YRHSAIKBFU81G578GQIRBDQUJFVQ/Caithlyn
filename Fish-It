@@ -261,7 +261,7 @@ Automatic:Section({ Title = 'Automation' })
 
 local autoFishWasOn = false
 local autoClickerEnabled = false
-local clickInterval = 0.05
+local clickInterval = 0.5
 local lastClickTime = 0
 local clickCount = 0
 
@@ -300,7 +300,7 @@ local function getClickPosition()
         local size = tapButton.AbsoluteSize
         return Vector2.new(
             pos.X + size.X / 2,
-            pos.Y + size.Y / 2 + 50
+            pos.Y + size.Y / 2
         ), "TAP Button"
     end
     
