@@ -261,7 +261,7 @@ Automatic:Section({ Title = 'Automation' })
 
 local autoFishWasOn = false
 local autoClickerEnabled = false
-local clickInterval = 0.5
+local clickInterval = 0.05
 local lastClickTime = 0
 local clickCount = 0
 
