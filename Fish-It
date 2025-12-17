@@ -1,1 +1,1166 @@
 
+--// Load WindUI
+local Version = "1.6.62"
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
+
+--// Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+
+--// Player References
+local LocalPlayer = Players.LocalPlayer
+local Player = LocalPlayer
+
+--// Network
+local net = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0"):WaitForChild("net")
+local InitiateTrade = net:WaitForChild("RF/InitiateTrade")
+
+local RFUpdateAutoFishingState = net:WaitForChild("RF/UpdateAutoFishingState")
+local RFCancelFishingInputs = net:WaitForChild("RF/CancelFishingInputs")
+
+local RFPurchaseBait = net:WaitForChild("RF/PurchaseBait")
+local RFPurchaseRod = net:WaitForChild("RF/PurchaseFishingRod")
+local RFPurchaseMerchant = net:WaitForChild("RF/PurchaseMarketItem")
+
+local REEquipItem = net:WaitForChild("RE/EquipItem")
+local REEquipBait = net:WaitForChild("RE/EquipBait")
+
+--// Modules
+local Constants = require(ReplicatedStorage:WaitForChild("Shared", 20):WaitForChild("Constants"))
+local Replion = _G.Replion or require(ReplicatedStorage.Packages.Replion)
+local ItemUtility = _G.ItemUtility or require(ReplicatedStorage.Shared.ItemUtility)
+local ItemStringUtility = _G.ItemStringUtility or require(ReplicatedStorage.Modules.ItemStringUtility)
+
+--// Global Character References
+_G.Characters = workspace:FindFirstChild("Characters"):WaitForChild(LocalPlayer.Name)
+_G.HRP = _G.Characters:WaitForChild("HumanoidRootPart")
+_G.Overhead = _G.HRP:WaitForChild("Overhead")
+_G.Header = _G.Overhead:WaitForChild("Content"):WaitForChild("Header")
+_G.LevelLabel = _G.Overhead:WaitForChild("LevelContainer"):WaitForChild("Label")
+_G.XPBar = Player:WaitForChild("PlayerGui"):WaitForChild("XP")
+_G.XPLevel = _G.XPBar:WaitForChild("Frame"):WaitForChild("LevelCount")
+_G.Title = _G.Overhead:WaitForChild("TitleContainer"):WaitForChild("Label")
+_G.TitleEnabled = _G.Overhead:WaitForChild("TitleContainer")
+
+--// Anti-AFK
+if Player and VirtualUser then
+    Player.Idled:Connect(function()
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end)
+end
+
+--// Config System
+local CONFIG_FOLDER = "CaithlynConfig"
+local CONFIG_FILE = "settings.json"
+
+local function ensureFolder()
+    if not isfolder or not writefile then return false end
+    if not isfolder(CONFIG_FOLDER) then makefolder(CONFIG_FOLDER) end
+    return true
+end
+
+local function getConfigPath()
+    return CONFIG_FOLDER .. "/" .. CONFIG_FILE
+end
+
+local function loadConfig()
+    if not ensureFolder() then return {} end
+    local path = getConfigPath()
+    if not isfile(path) then return {} end
+    
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(readfile(path))
+    end)
+    return (ok and typeof(data) == "table") and data or {}
+end
+
+local function saveConfig(cfg)
+    if not ensureFolder() then return end
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(cfg)
+    end)
+    if ok then writefile(getConfigPath(), encoded) end
+end
+
+local Config = loadConfig()
+
+local function setFlag(key, value)
+    Config[key] = value
+    saveConfig(Config)
+end
+
+--// Load Additional Modules
+local Shared = ReplicatedStorage:WaitForChild("Shared", 5)
+local Modules = ReplicatedStorage:WaitForChild("Modules", 5)
+
+if Shared then
+    if not _G.ItemUtility then
+        pcall(function()
+            _G.ItemUtility = require(Shared:WaitForChild("ItemUtility", 5))
+        end)
+    end
+    if not _G.ItemStringUtility and Modules then
+        pcall(function()
+            _G.ItemStringUtility = require(Modules:WaitForChild("ItemStringUtility", 5))
+        end)
+    end
+    if not _G.Replion then pcall(function() _G.Replion = require(ReplicatedStorage.Packages.Replion) end) end
+    if not _G.Promise then pcall(function() _G.Promise = require(ReplicatedStorage.Packages.Promise) end) end
+    if not _G.PromptController then pcall(function() _G.PromptController = require(ReplicatedStorage.Controllers.PromptController) end) end
+end
+
+--// Notification
+local function Notify(title, message, duration, icon)
+    WindUI:Notify({
+        Title = title,
+        Content = message,
+        Duration = duration,
+        Icon = icon
+    })
+end
+
+local function NotifySuccess(title, message, duration)
+    Notify(title, message, duration, "circle-check")
+end
+
+local function NotifyError(title, message, duration)
+    Notify(title, message, duration, "ban")
+end
+
+local function NotifyWarning(title, message, duration)
+    Notify(title, message, duration, "triangle-alert")
+end
+
+--// Theme & Window
+WindUI:AddTheme({
+    Name = "Deep Sea Dawn",
+    Accent = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#FFC700"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#00BFFF"), Transparency = 0 },
+    }, { Rotation = 45 }),
+    Dialog = Color3.fromHex("#082A4D"),
+    Outline = Color3.fromHex("#9BCFFF"),
+    Text = Color3.fromHex("#E0F4FF"),
+    Placeholder = Color3.fromHex("#5B8CA3"),
+    Background = Color3.fromHex("#051930"),
+    Button = Color3.fromHex("#176FA8"),
+    Icon = Color3.fromHex("#FFD75F")
+})
+
+local Window = WindUI:CreateWindow({
+    Title = "Caithlyn",
+    Icon = "crown",
+    Author = "by Einhard.",
+    Folder = "Caithlyn",
+    Size = UDim2.fromOffset(600, 400),
+    Transparent = false,
+    Theme = "Deep Sea Dawn",
+    ToggleKey = Enum.KeyCode.K,
+    KeySystem = false,
+    ScrollBarEnabled = true,
+    HideSearchBar = true,
+    NewElements = true,
+    
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function() end,
+    },
+    
+    EditOpenButton = {
+        Title = "Caithlyn",
+        Icon = "crown",
+        CornerRadius = UDim.new(0, 30),
+        StrokeThickness = 2,
+        Color = ColorSequence.new(Color3.fromHex("FFD75F"), Color3.fromHex("082A4D")),
+        Draggable = true,
+    }
+})
+
+task.spawn(function()
+    local TweenService = game:GetService("TweenService")
+    local ButtonUI = Instance.new("ScreenGui")
+    ButtonUI.Name = "CaithlynButton"
+    ButtonUI.Parent = game:GetService("CoreGui")
+    ButtonUI.ResetOnSpawn = false
+    ButtonUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local Button = Instance.new("TextButton")
+    Button.Parent = ButtonUI
+    Button.Size = UDim2.new(0, 70, 0, 70)
+    Button.Position = UDim2.new(0, 10, 0.5, -35)
+    Button.BackgroundColor3 = Color3.fromHex("082A4D")
+    Button.BackgroundTransparency = 0
+    Button.Text = ""
+    Button.Active = true
+    Button.Draggable = true
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 18)
+    Corner.Parent = Button
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Color3.fromHex("FFD75F")
+    Stroke.Thickness = 3
+    Stroke.Parent = Button
+
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromHex("0A3A65")
+        }):Play()
+    end)
+
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromHex("082A4D")
+        }):Play()
+    end)
+
+    Button.MouseButton1Down:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {
+            Size = UDim2.new(0, 65, 0, 65)
+        }):Play()
+    end)
+
+    Button.MouseButton1Up:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {
+            Size = UDim2.new(0, 70, 0, 70)
+        }):Play()
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+        pcall(function()
+            Window:Toggle()
+            local isOpen = Window:IsOpen()
+            if isOpen then
+                Stroke.Color = Color3.fromHex("FFD75F")
+            else
+                Stroke.Color = Color3.fromHex("FF6B6B")
+            end
+        end)
+    end)
+end)
+
+--// Tabs
+local Automatic = Window:Tab({ Title = 'Automatic', Icon = 'play' })
+local Teleport = Window:Tab({ Title = 'Teleport', Icon = 'navigation' })
+local Trade = Window:Tab({ Title = "Trade", Icon = "handshake" })
+local Shop = Window:Tab({ Title = "Shop", Icon = "shopping-bag" })
+
+--// Auto Fishing
+Automatic:Section({ Title = 'Automation' })
+
+local autoFishWasOn = false
+
+local function fireReelRemote()
+    local success = false
+    for i = 1, 3 do
+        pcall(function()
+            RFCancelFishingInputs:InvokeServer()
+        end)
+        task.wait(0.1)
+    end
+end
+
+local function isGameAutoFishEnabled()
+    local success, result = pcall(function()
+        local DataReplion = Replion.Client:GetReplion("Data")
+        if not DataReplion then return false end
+        return DataReplion:Get({"AutoFishing"}) == true
+    end)
+    return success and result or false
+end
+
+local function disableAutoFishingAndUnequipRod()
+    fireReelRemote()
+
+    if isGameAutoFishEnabled() then
+        for i = 1, 3 do
+            pcall(function()
+                RFUpdateAutoFishingState:InvokeServer(false)
+            end)
+            task.wait(0.1)
+        end
+    end
+    task.wait(0.1)
+    
+    local char = LocalPlayer.Character
+    if char then
+        for attempt = 1, 3 do
+            pcall(function()
+                net:WaitForChild("RE/UnequipToolFromHotbar"):FireServer()
+            end)
+            task.wait(0.1)
+            if not char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!") then break end
+        end
+    end
+    task.wait(0.1)
+end
+
+local function enableAutoFishingAndEquipRod()
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local hasRod = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
+    if hasRod then
+        for attempt = 1, 3 do
+            pcall(function()
+                net:WaitForChild("RE/EquipToolFromHotbar"):FireServer(1)
+            end)
+            task.wait(0.1)
+            if not char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!") then break end
+        end
+    end
+    
+    task.wait(0.2)
+    
+    if not isGameAutoFishEnabled() then
+        for i = 1, 3 do
+            pcall(function()
+                RFUpdateAutoFishingState:InvokeServer(true)
+            end)
+            task.wait(0.1)
+        end
+    end
+    task.wait(0.2)
+end
+
+local function enableAutoFish()
+    task.spawn(function()
+        while autoFishWasOn do
+            enableAutoFishingAndEquipRod()
+            task.wait(2)
+        end
+    end)
+end
+
+Automatic:Toggle({
+    Title = 'Auto Fish',
+    Desc = 'Fishing Legit',
+    Value = Config.AutoFish == true,
+    Callback = function(isOn)
+        autoFishWasOn = isOn
+        setFlag("AutoFish", isOn)
+        
+        if isOn then
+            enableAutoFish()
+        else
+            autoFishWasOn = false
+            disableAutoFishingAndUnequipRod()
+        end
+    end
+})
+
+if Config.AutoFish then
+    autoFishWasOn = true
+    enableAutoFish()
+end
+
+--// Auto Sell
+local autoSellWasOn = false
+local autoSellThreshold = 100
+
+local function getFishCount()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then 
+        return 0 
+    end
+
+    for _, gui in ipairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("TextLabel") and child.Name == "BagSize" and child.Visible then
+                    local match = child.Text:match("([%d,]+)%s*/")
+                    if match then
+                        local cleaned = match:gsub(",", "")
+                        cleaned = cleaned:gsub("%s+", "")
+                        local num = tonumber(cleaned)
+                        if num then
+                            return num
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return 0
+end
+
+local function sellAllFish()
+    pcall(function()
+        for _, obj in ipairs(net:GetDescendants()) do
+            if (obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent")) then
+                local nameLower = obj.Name:lower()
+                if nameLower:find("sell") then
+                    pcall(function()
+                        if obj:IsA("RemoteFunction") then
+                            obj:InvokeServer()
+                        else
+                            obj:FireServer()
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+local function autoSellLoop()
+    task.spawn(function()
+        while autoSellWasOn do
+            task.wait(6)
+            if getFishCount() >= autoSellThreshold then
+                sellAllFish()
+                task.wait(1)
+            end
+        end
+    end)
+end
+
+Automatic:Toggle({
+    Title = 'Auto Sell',
+    Desc = 'Auto Selling Fish',
+    Value = Config.AutoSell == true,
+    Callback = function(isOn)
+        autoSellWasOn = isOn
+        setFlag("AutoSell", isOn)
+        if isOn then autoSellLoop() end
+    end
+})
+
+if Config.AutoSell then
+    autoSellWasOn = true
+    autoSellLoop()
+end
+
+--// FPS Boost
+local function destroyAllVisuals()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or 
+               obj:IsA("Fire") or obj:IsA("Sparkles") or obj:IsA("Explosion") or 
+               obj:IsA("Beam") or obj:IsA("PointLight") or obj:IsA("SpotLight") or 
+               obj:IsA("SurfaceLight") or obj:IsA("Decal") or obj:IsA("Texture") or
+               obj:IsA("SurfaceAppearance") or obj:IsA("SpecialMesh") or 
+               obj:IsA("FileMesh") or obj:IsA("CylinderMesh") or obj:IsA("BlockMesh") then
+                obj:Destroy()
+            end
+        end)
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            for _, obj in ipairs(player.Character:GetDescendants()) do
+                pcall(function()
+                    if obj:IsA("Accessory") or obj:IsA("Hat") or obj:IsA("Shirt") or 
+                       obj:IsA("Pants") or obj:IsA("ShirtGraphic") or obj:IsA("CharacterMesh") or
+                       obj:IsA("Decal") or obj:IsA("Texture") then
+                        obj:Destroy()
+                    end
+                end)
+            end
+        end
+    end
+end
+
+local function fpsBoost()
+    local Lighting = game:GetService("Lighting")
+    
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+    
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 0
+    Lighting.Technology = Enum.Technology.Compatibility
+    Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    Lighting.FogEnd = 9e9
+    Lighting.FogStart = 0
+    
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        pcall(function()
+            effect:Destroy()
+        end)
+    end
+    
+    pcall(function()
+        workspace.Terrain.WaterTransparency = 1
+        workspace.Terrain.WaterReflectance = 0
+        workspace.Terrain.WaterWaveSize = 0
+        workspace.Terrain.WaterWaveSpeed = 0
+        workspace.Terrain.Decoration = false
+    end)
+    
+    destroyAllVisuals()
+    
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("BasePart") then
+                local isPlayerPart = false
+                local ancestor = obj:FindFirstAncestorOfClass("Model")
+                if ancestor then
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if ancestor == player.Character then
+                            isPlayerPart = true
+                            break
+                        end
+                    end
+                end
+                
+                if not isPlayerPart then
+                    obj.Transparency = 1
+                    obj.CastShadow = false
+                end
+            end
+        end)
+    end
+    
+    workspace.DescendantAdded:Connect(function(obj)
+        task.wait(0.1)
+        pcall(function()
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or 
+               obj:IsA("Fire") or obj:IsA("PointLight") or obj:IsA("SpotLight") or
+               obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Accessory") then
+                obj:Destroy()
+            elseif obj:IsA("BasePart") then
+                obj.Transparency = 1
+                obj.CastShadow = false
+            end
+        end)
+    end)
+end
+
+fpsBoost()
+
+--// Teleport System
+local islands = {
+    { Name = "Lost Isle", Position = Vector3.new(-3739.66, -135.07, -1010.27), LookAt = Vector3.new(-3710.56, -105.45, -895.97) },
+    { Name = "Tropical", Position = Vector3.new(-2176.73, 5.87, 3654.82), LookAt = Vector3.new(-2166.86, 5.87, 3656.45) },
+    { Name = "Creater", Position = Vector3.new(975.36, 2.17, 5021.63), LookAt = Vector3.new(980.01, 2.17, 5030.49) },
+    { Name = "Esoteric", Position = Vector3.new(3207.41, -1302.86, 1444.84), LookAt = Vector3.new(3250.56, -1302.86, 1419.57) },
+    { Name = "Treasure", Position = Vector3.new(-3611.89, -279.07, -1589.51), LookAt = Vector3.new(-3619.21, -286.53, -1602.57) }
+}
+
+Teleport:Section({Title = 'Teleport to Island'})
+local activeIslandIndex = nil
+local toggleRefs = {}
+local toggleStates = {}
+
+for i, island in ipairs(islands) do
+    toggleStates[i] = false
+    toggleRefs[i] = Teleport:Toggle({
+        Title = island.Name,
+        Value = false,
+        Callback = function(state)
+            toggleStates[i] = state
+            if state then
+                for j, toggle in ipairs(toggleRefs) do
+                    if j ~= i then
+                        toggle:Set(false)
+                        toggleStates[j] = false
+                    end
+                end
+                activeIslandIndex = i
+                setFlag("ActiveIsland", island.Name)
+                local character = LocalPlayer.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
+                end
+            else
+                if activeIslandIndex == i then
+                    activeIslandIndex = nil
+                    setFlag("ActiveIsland", nil)
+                end
+            end
+        end
+    })
+end
+
+if Config.ActiveIsland then
+    for i, island in ipairs(islands) do
+        if island.Name == Config.ActiveIsland then
+            toggleRefs[i]:Set(true)
+            break
+        end
+    end
+end
+
+--// Trade System
+Trade:Section({ Title = "Secret Auto Trade" })
+
+pcall(function()
+    local PromptController = _G.PromptController or ReplicatedStorage:WaitForChild("Controllers").PromptController
+    local Promise = _G.Promise or require(ReplicatedStorage.Packages.Promise)
+    if PromptController and PromptController.FirePrompt then
+        local oldFirePrompt = PromptController.FirePrompt
+        PromptController.FirePrompt = function(self, promptText, ...)
+            if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
+                return Promise.new(function(resolve)
+                    task.wait(3)
+                    autoFishWasOn = false
+                    disableAutoFishingAndUnequipRod()
+                    resolve(true)
+                    
+                    task.spawn(function()
+                        task.wait(1)
+                        autoFishWasOn = true
+                        enableAutoFishingAndEquipRod()
+                    end)
+                end)
+            end
+            return oldFirePrompt(self, promptText, ...)
+        end
+    end
+end)
+
+Trade:Toggle({
+    Title = "Enable Auto Accept Trade",
+    Desc = "Automatically accepts incoming trade requests.",
+    Value = Config.AutoAcceptTrade == true,
+    Callback = function(value)
+        _G.AutoAcceptTradeEnabled = value
+        setFlag("AutoAcceptTrade", value)
+        if value then
+            NotifySuccess("Auto Accept", "Auto accept trade enabled.", 2)
+        else
+            NotifyWarning("Auto Accept", "Auto accept trade disabled.", 2)
+        end
+    end
+})
+
+if Config.AutoAcceptTrade then
+    _G.AutoAcceptTradeEnabled = true
+end
+
+local tradeState = {
+    selectedPlayerName = Config.TradeTargetName or nil,
+    selectedPlayerId = Config.TradeTargetId or nil,
+    loopEnabled = false,
+    isTradingNow = false
+}
+
+local function getPlayerList()
+    local list = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(list, p.Name)
+        end
+    end
+    table.sort(list)
+    return list
+end
+
+local function refreshPlayerDropdown()
+    if _G.PlayerDropdownTradeSimple then
+        _G.PlayerDropdownTradeSimple:Refresh(getPlayerList())
+    end
+end
+
+local function isTargetPlayerInGame()
+    if not tradeState.selectedPlayerName then return false end
+    local targetPlayer = Players:FindFirstChild(tradeState.selectedPlayerName)
+    return targetPlayer ~= nil
+end
+
+local playerDropdown = Trade:Dropdown({
+    Title = "Select Trade Target",
+    Values = getPlayerList(),
+    Value = Config.TradeTargetName or (getPlayerList()[1] or nil),
+    SearchBarEnabled = true,
+    Callback = function(selected)
+        tradeState.selectedPlayerName = selected
+        tradeState.isLocked = true
+        local player = Players:FindFirstChild(selected)
+        if player then
+            tradeState.selectedPlayerId = player.UserId
+            setFlag("TradeTargetName", selected)
+            setFlag("TradeTargetId", player.UserId)
+            NotifySuccess("Target Locked", "Target locked: " .. player.Name, 3)
+        else
+            tradeState.selectedPlayerId = nil
+        end
+    end
+})
+
+_G.PlayerDropdownTradeSimple = playerDropdown
+
+if Config.TradeTargetName then
+    local targetPlayer = Players:FindFirstChild(Config.TradeTargetName)
+    if targetPlayer then
+        tradeState.selectedPlayerName = Config.TradeTargetName
+        tradeState.selectedPlayerId = targetPlayer.UserId
+        NotifySuccess("Auto Target", "Target restored: " .. Config.TradeTargetName, 2)
+    end
+end
+
+--// Player Added Event
+Players.PlayerAdded:Connect(function(player)
+    task.delay(0.1, refreshPlayerDropdown)
+    
+    task.delay(1, function()
+        
+        if tradeState.loopEnabled and tradeState.selectedPlayerName == player.Name then
+            NotifySuccess("Target Rejoined", player.Name .. " is back! Resuming trade...", 3)
+            if not tradeState.isTradingNow then
+                task.wait(2)
+                statusParagraph:SetDesc("Target rejoined! Resuming trade loop...")
+            end
+        end
+    end)
+end)
+
+--// Player Removing Event
+Players.PlayerRemoving:Connect(function(player)
+    task.delay(0.1, refreshPlayerDropdown)
+    
+    if tradeState.selectedPlayerName == player.Name then
+        NotifyWarning("Target Left", player.Name .. " left the game. Waiting for rejoin...", 3)
+    end
+end)
+
+local function getSecretFishUUIDs()
+    local DataReplion = Replion.Client:WaitReplion("Data")
+    if not DataReplion then return {} end
+    local inventoryItems = DataReplion:Get({"Inventory", "Items"})
+    if not inventoryItems then return {} end
+    
+    local uuids = {}
+    for _, itemData in ipairs(inventoryItems) do
+        if not itemData.Favorited then
+            local baseItemData = ItemUtility:GetItemData(itemData.Id)
+            if baseItemData and baseItemData.Data and baseItemData.Data.Type == "Fish" then
+                local tier = baseItemData.Data.Tier or 1
+                if tier == 7 or tier == 6 then
+                    table.insert(uuids, {
+                        UUID = itemData.UUID,
+                        Name = ItemStringUtility.GetItemName(itemData, baseItemData),
+                        Tier = tier
+                    })
+                end
+            end
+        end
+    end
+    return uuids
+end
+
+local statusParagraph = Trade:Paragraph({
+    Title = "Status",
+    Desc = "Waiting to start..."
+})
+
+--// Function teleport to target player
+local function teleportToTarget()
+    if not tradeState.selectedPlayerName then return false end
+    
+    local targetPlayer = Players:FindFirstChild(tradeState.selectedPlayerName)
+    if not targetPlayer or not targetPlayer.Character then return false end
+    
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local myChar = LocalPlayer.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    
+    if not targetHRP or not myHRP then return false end
+    
+    local distance = (myHRP.Position - targetHRP.Position).Magnitude
+    
+    if distance > 10 then
+        pcall(function()
+            local offset = Vector3.new(5, 0, 5)
+            myHRP.CFrame = CFrame.new(targetHRP.Position + offset)
+        end)
+        task.wait(0.3)
+        return true
+    end
+    
+    return true
+end
+
+local function startSecretAutoTradeLoop()
+    task.spawn(function()
+        while tradeState.loopEnabled do
+            local secretList = getSecretFishUUIDs()
+            local count = #secretList
+            
+            if count == 0 then
+                statusParagraph:SetDesc("No secret fish. Waiting 30s before next check...")
+                task.wait(30)
+                continue
+            end
+            
+            if not isTargetPlayerInGame() then
+                statusParagraph:SetDesc("Have " .. count .. " fish but target offline.\nFishing continues...")
+                task.wait(15)
+                continue
+            end
+            
+            local targetPlayer = Players:FindFirstChild(tradeState.selectedPlayerName)
+            if not targetPlayer then
+                task.wait(5)
+                continue
+            end
+            
+            tradeState.selectedPlayerId = targetPlayer.UserId
+            NotifySuccess("Target Detected", targetPlayer.Name .. " is online! Starting trade...", 2)
+            
+            local charWaitTime = 0
+            while charWaitTime < 10 do
+                if not tradeState.loopEnabled then break end
+                if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    break
+                end
+                task.wait(0.5)
+                charWaitTime = charWaitTime + 0.5
+            end
+            
+            if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                statusParagraph:SetDesc("Character not loaded. Retrying...")
+                task.wait(3)
+                continue
+            end
+            
+            statusParagraph:SetDesc("Teleporting to " .. targetPlayer.Name .. "...")
+            local teleportSuccess = teleportToTarget()
+            if not teleportSuccess then
+                statusParagraph:SetDesc("Teleport failed. Retrying in 3s...")
+                task.wait(3)
+                continue
+            end
+            
+            task.wait(0.5)
+            
+            tradeState.isTradingNow = true
+            local targetId = tradeState.selectedPlayerId
+            local targetName = tradeState.selectedPlayerName
+            local totalSent = 0
+            
+            statusParagraph:SetDesc("Trading " .. count .. " fish to " .. targetName .. "...")
+            
+            while tradeState.loopEnabled do
+                if not isTargetPlayerInGame() then
+                    statusParagraph:SetDesc("Target went offline during trade.\nBack to fishing...")
+                    break
+                end
+                
+                secretList = getSecretFishUUIDs()
+                count = #secretList
+                
+                if count == 0 then
+                    statusParagraph:SetDesc("All fish traded! Inventory empty.\nBack to fishing!")
+                    fireReelRemote()
+                    
+                    if activeIslandIndex and toggleStates[activeIslandIndex] then
+                        local island = islands[activeIslandIndex]
+                        local character = LocalPlayer.Character
+                        character:WaitForChild("HumanoidRootPart")
+                        task.wait(0.5)
+                        if character:FindFirstChild("HumanoidRootPart") then
+                            character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
+                        end
+                    end
+                    break
+                end
+                
+                teleportToTarget()
+                task.wait(0.2)
+                
+                for i, item in ipairs(secretList) do
+                    if not tradeState.loopEnabled then
+                        statusParagraph:SetDesc("Trade stopped by user.")
+                        tradeState.isTradingNow = false
+                        return
+                    end
+                    
+                    if not isTargetPlayerInGame() then
+                        statusParagraph:SetDesc("Target disconnected!")
+                        break
+                    end
+                    
+                    teleportToTarget()
+                    task.wait(0.1)
+                    
+                    statusParagraph:SetDesc(string.format("[%d/%d] Trading %s\nto %s", i, count, item.Name, targetName))
+                    
+                    local success = false
+                    for attempt = 1, 2 do
+                        local ok, result = pcall(function()
+                            return InitiateTrade:InvokeServer(targetId, item.UUID)
+                        end)
+                        
+                        if ok and result then
+                            totalSent = totalSent + 1
+                            success = true
+                            break
+                        else
+                            local errorMsg = tostring(result):lower()
+                            if errorMsg:find("far") or errorMsg:find("distance") then
+                                if attempt == 1 then
+                                    statusParagraph:SetDesc("Too far! Repositioning...")
+                                    teleportToTarget()
+                                    task.wait(0.5)
+                                end
+                            else
+                                break
+                            end
+                        end
+                    end
+
+                    fireReelRemote()
+                    task.wait(3)
+                end
+                
+                if not isTargetPlayerInGame() then
+                    break
+                end
+                
+                statusParagraph:SetDesc("Rechecking inventory...")
+                task.wait(2)
+            end
+            
+            tradeState.isTradingNow = false
+            
+            if totalSent > 0 then
+                statusParagraph:SetDesc(string.format("Sent %d fish to %s!\nBack to fishing.", totalSent, targetName))
+                NotifySuccess("Trade Complete", "Sent " .. totalSent .. " fish!", 3)
+            else
+                statusParagraph:SetDesc("Trade session ended. Back to fishing.")
+            end
+            task.wait(5)
+        end
+        
+        tradeState.isTradingNow = false
+        statusParagraph:SetDesc("Auto trade disabled.")
+    end)
+end
+
+Trade:Toggle({
+    Title = "Auto Trade Loop (Secret)",
+    Desc = "Continuously send all non-favorited SECRET fish. Auto-pauses fishing during trade.",
+    Value = Config.AutoTradeLoop == true,
+    Callback = function(state)
+        tradeState.loopEnabled = state
+        setFlag("AutoTradeLoop", state)
+        if state then
+            if not tradeState.selectedPlayerName then
+                NotifyError("Auto Trade", "Please select a trade target first.", 2)
+                tradeState.loopEnabled = false
+                return
+            end
+            startSecretAutoTradeLoop()
+            NotifySuccess("Auto Trade", "Auto trade loop started.", 2)
+        else
+            NotifyWarning("Auto Trade", "Auto trade loop stopped.", 2)
+        end
+    end
+})
+
+if Config.AutoTradeLoop and Config.TradeTargetName then
+    task.wait(1)
+    local targetPlayer = Players:FindFirstChild(Config.TradeTargetName)
+    if targetPlayer then
+        tradeState.selectedPlayerId = targetPlayer.UserId
+        tradeState.loopEnabled = true
+        startSecretAutoTradeLoop()
+        NotifySuccess("Auto Trade", "Trade loop auto-started with saved target.", 2)
+    else
+        NotifyWarning("Auto Trade", "Target offline. Will auto-start when they join.", 2)
+        tradeState.loopEnabled = true
+        startSecretAutoTradeLoop()
+    end
+end
+
+--// Auto Shop
+--// Item Data
+local rodData = {
+    ["Midnight Rod"] = 80,
+    ["Steampunk Rod"] = 6,
+    ["Flourescent Rod"] = 255,
+    ["Ares Rod"] = 126
+}
+
+local baitData = {
+    ["Corrupt Bait"] = 15,
+    ["Aether Bait"] = 16
+}
+
+local merchantData = {
+    ["Singularity Bait"] = 3
+}
+
+--// Purchase
+local function buyItem(itemType, itemData, itemName)
+    local remote = itemType == 'Bait' and RFPurchaseBait or 
+                   itemType == 'Rod' and RFPurchaseRod or 
+                   itemType == 'Merchant' and RFPurchaseMerchant
+    
+    if not remote then return false end
+    
+    local success, result = pcall(function()
+        return remote:InvokeServer(itemData)
+    end)
+    
+    if success then
+        NotifySuccess("Purchase Success", "Bought: " .. itemName, 2)
+        
+        if itemType == 'Bait' then
+            autoFishWasOn = false
+            disableAutoFishingAndUnequipRod()
+            task.wait(0.5)
+ 
+            if itemType == 'Merchant' then itemData = 18 end
+            pcall(function()
+                REEquipBait:FireServer(itemData)
+                NotifySuccess("Equipped", itemName .. " equipped!", 2)
+            end)
+
+            task.wait(0.5)
+            autoFishWasOn = true
+            enableAutoFishingAndEquipRod()
+        end
+
+        return true
+    else
+        NotifyError("Purchase Failed", tostring(result), 2)
+        return false
+    end
+end
+
+--// ROD SECTION
+Shop:Section({ Title = 'Rod' })
+
+local rodNames = {}
+for name, _ in pairs(rodData) do
+    table.insert(rodNames, name)
+end
+table.sort(rodNames)
+
+local selectedRod = Config.SelectedRod or rodNames[1]
+
+local rodDropdown = Shop:Dropdown({
+    Title = 'Select Rod',
+    Desc = 'Choose rod to purchase',
+    Values = rodNames,
+    Value = selectedRod,
+    SearchBarEnabled = true,
+    Callback = function(selected)
+        selectedRod = selected
+        setFlag("SelectedRod", selected)
+    end
+})
+
+Shop:Button({
+    Title = "Buy Rod",
+    Desc = "Purchase selected fishing rod",
+    Callback = function()
+        local rodId = rodData[selectedRod]
+        if not rodId then
+            NotifyError("Error", "Invalid rod selected", 2)
+            return
+        end
+        
+        buyItem('Rod', rodId, selectedRod)
+    end
+})
+
+--// BAIT SECTION
+Shop:Section({ Title = 'Bait' })
+
+local baitNames = {}
+for name, _ in pairs(baitData) do
+    table.insert(baitNames, name)
+end
+table.sort(baitNames)
+
+local selectedBait = Config.SelectedBait or baitNames[1]
+
+local baitDropdown = Shop:Dropdown({
+    Title = 'Select Bait',
+    Desc = 'Choose bait to purchase',
+    Values = baitNames,
+    Value = selectedBait,
+    SearchBarEnabled = true,
+    Callback = function(selected)
+        selectedBait = selected
+        setFlag("SelectedBait", selected)
+    end
+})
+
+Shop:Button({
+    Title = "Buy Bait",
+    Desc = "Purchase selected bait",
+    Callback = function()
+        local baitId = baitData[selectedBait]
+        if not baitId then
+            NotifyError("Error", "Invalid bait selected", 2)
+            return
+        end
+        
+        buyItem('Bait', baitId, selectedBait)
+    end
+})
+
+--// MERCHANT SECTION
+Shop:Section({ Title = 'Merchant' })
+
+local merchantNames = {}
+for name, _ in pairs(merchantData) do
+    table.insert(merchantNames, name)
+end
+table.sort(merchantNames)
+
+local selectedMerchant = Config.SelectedMerchant or merchantNames[1]
+
+local merchantDropdown = Shop:Dropdown({
+    Title = 'Select Item',
+    Desc = 'Choose merchant item to purchase',
+    Values = merchantNames,
+    Value = selectedMerchant,
+    SearchBarEnabled = true,
+    Callback = function(selected)
+        selectedMerchant = selected
+        setFlag("SelectedMerchant", selected)
+    end
+})
+
+Shop:Button({
+    Title = "Buy Merchant Item",
+    Desc = "Purchase selected merchant item",
+    Callback = function()
+        local itemId = merchantData[selectedMerchant]
+        if not itemId then
+            NotifyError("Error", "Invalid item selected", 2)
+            return
+        end
+        
+        buyItem('Merchant', itemId, selectedMerchant)
+    end
+})
+
+--// Respawn Handler
+LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait(1)
+    if activeIslandIndex and toggleStates[activeIslandIndex] then
+        local island = islands[activeIslandIndex]
+        character:WaitForChild("HumanoidRootPart")
+        task.wait(0.5)
+        if character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = CFrame.new(island.Position, island.LookAt)
+        end
+    end
+
+    if autoFishWasOn then
+        task.wait(0.5)
+        enableAutoFish()
+    end
+
+    if autoSellWasOn then
+        task.wait(0.5)
+        autoSellLoop()
+    end
+end)
