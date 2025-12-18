@@ -1,5 +1,4 @@
 
-
 --// Load WindUI
 local Version = "1.6.62"
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
@@ -28,6 +27,9 @@ local RFPurchaseMerchant = net:WaitForChild("RF/PurchaseMarketItem")
 
 local REEquipItem = net:WaitForChild("RE/EquipItem")
 local REEquipBait = net:WaitForChild("RE/EquipBait")
+
+local FishingControllerPath = ReplicatedStorage.Controllers.FishingController
+local FishingController = require(FishingControllerPath)
 
 --// Modules
 local Constants = require(ReplicatedStorage:WaitForChild("Shared", 20):WaitForChild("Constants"))
@@ -332,7 +334,18 @@ local function enableAutoFishingAndEquipRod()
     task.wait(0.2)
 end
 
+local function performClick()
+    FishingController:RequestFishingMinigameClick()
+    task.wait(0.03)
+end
+
 local function enableAutoFish()
+    task.spawn(function()
+        while autoFishWasOn do
+            performClick()
+        end
+    end)
+
     task.spawn(function()
         while autoFishWasOn do
             enableAutoFishingAndEquipRod()
