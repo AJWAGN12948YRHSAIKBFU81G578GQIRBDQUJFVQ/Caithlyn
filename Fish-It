@@ -1,3 +1,4 @@
-_G.lite_mode=true
+
 _G.script_key= "VINZ-0660-D721-PREM-7R9O"
+_G.lite_mode=true
 loadstring(game:HttpGet("https://script.vinzhub.com/loader"))()
