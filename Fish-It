@@ -453,10 +453,101 @@ if Config.AutoSell then
     autoSellLoop()
 end
 
---// Disable 3D Rendering
+--// FPS Boost
+local function destroyAllVisuals()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or 
+               obj:IsA("Fire") or obj:IsA("Sparkles") or obj:IsA("Explosion") or 
+               obj:IsA("Beam") or obj:IsA("PointLight") or obj:IsA("SpotLight") or 
+               obj:IsA("SurfaceLight") or obj:IsA("Decal") or obj:IsA("Texture") or
+               obj:IsA("SurfaceAppearance") or obj:IsA("SpecialMesh") or 
+               obj:IsA("FileMesh") or obj:IsA("CylinderMesh") or obj:IsA("BlockMesh") then
+                obj:Destroy()
+            end
+        end)
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            for _, obj in ipairs(player.Character:GetDescendants()) do
+                pcall(function()
+                    if obj:IsA("Accessory") or obj:IsA("Hat") or obj:IsA("Shirt") or 
+                       obj:IsA("Pants") or obj:IsA("ShirtGraphic") or obj:IsA("CharacterMesh") or
+                       obj:IsA("Decal") or obj:IsA("Texture") then
+                        obj:Destroy()
+                    end
+                end)
+            end
+        end
+    end
+end
+
 local function fpsBoost()
-    RunService:Set3dRenderingEnabled(false)
+    local Lighting = game:GetService("Lighting")
+    
     settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+    
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 0
+    Lighting.Technology = Enum.Technology.Compatibility
+    Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    Lighting.FogEnd = 9e9
+    Lighting.FogStart = 0
+    
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        pcall(function()
+            effect:Destroy()
+        end)
+    end
+    
+    pcall(function()
+        workspace.Terrain.WaterTransparency = 1
+        workspace.Terrain.WaterReflectance = 0
+        workspace.Terrain.WaterWaveSize = 0
+        workspace.Terrain.WaterWaveSpeed = 0
+        workspace.Terrain.Decoration = false
+    end)
+    
+    destroyAllVisuals()
+    
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("BasePart") then
+                local isPlayerPart = false
+                local ancestor = obj:FindFirstAncestorOfClass("Model")
+                if ancestor then
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if ancestor == player.Character then
+                            isPlayerPart = true
+                            break
+                        end
+                    end
+                end
+                
+                if not isPlayerPart then
+                    obj.Transparency = 1
+                    obj.CastShadow = false
+                end
+            end
+        end)
+    end
+    
+    workspace.DescendantAdded:Connect(function(obj)
+        task.wait(0.1)
+        pcall(function()
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or 
+               obj:IsA("Fire") or obj:IsA("PointLight") or obj:IsA("SpotLight") or
+               obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Accessory") then
+                obj:Destroy()
+            elseif obj:IsA("BasePart") then
+                obj.Transparency = 1
+                obj.CastShadow = false
+            end
+        end)
+    end)
 end
 
 fpsBoost()
