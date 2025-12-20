@@ -333,15 +333,11 @@ local function enableAutoFishingAndEquipRod()
     task.wait(0.2)
 end
 
-local function performClick()
-    FishingController:RequestFishingMinigameClick()
-    task.wait(0.03)
-end
-
 local function enableAutoFish()
     task.spawn(function()
         while autoFishWasOn do
-            performClick()
+            FishingController:RequestFishingMinigameClick()
+            task.wait(0.03)
         end
     end)
 
@@ -617,14 +613,17 @@ pcall(function()
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
                     task.wait(3)
-                    autoFishWasOn = false
+                    local enableds = autoFishWasOn
+                    if enableds then autoFishWasOn = false end
                     disableAutoFishingAndUnequipRod()
                     resolve(true)
                     
                     task.spawn(function()
-                        task.wait(1)
-                        autoFishWasOn = true
-                        enableAutoFishingAndEquipRod()
+                        if enableds then 
+                            task.wait(1)
+                            autoFishWasOn = true
+                            enableAutoFishingAndEquipRod()
+                        end
                     end)
                 end)
             end
