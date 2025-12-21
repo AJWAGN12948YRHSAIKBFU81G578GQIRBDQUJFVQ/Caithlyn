@@ -643,8 +643,8 @@ pcall(function()
                                     break 
                                 end
                             end
-                        end
-                    end)
+                        end)
+                    end
                 end)
             end
             return oldFirePrompt(self, promptText, ...)
