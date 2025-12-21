@@ -618,7 +618,6 @@ pcall(function()
                     resolve(true)
 
                     task.spawn(function()
-                        task.wait(1)
                         
                         for i = 1, 3 do
                             disableAutoFishingAndUnequipRod()
