@@ -260,6 +260,15 @@ Automatic:Section({ Title = 'Automation' })
 
 local autoFishWasOn = false
 
+task.spawn(function()
+    while true do
+        pcall(function()
+            FishingController:RequestFishingMinigameClick()
+        end)
+        task.wait(0.05)
+    end
+end)
+
 local function fireReelRemote()
     local success = false
     for i = 1, 3 do
@@ -334,13 +343,6 @@ local function enableAutoFishingAndEquipRod()
 end
 
 local function enableAutoFish()
-    task.spawn(function()
-        while autoFishWasOn do
-            FishingController:RequestFishingMinigameClick()
-            task.wait(0.03)
-        end
-    end)
-
     task.spawn(function()
         while autoFishWasOn do
             enableAutoFishingAndEquipRod()
@@ -612,18 +614,19 @@ pcall(function()
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
-                    task.wait(3)
-                    local enableds = autoFishWasOn
-                    if enableds then autoFishWasOn = false end
-                    disableAutoFishingAndUnequipRod()
+                    autoFishWasOn = false
+                    for i = 1, 3 do
+                        disableAutoFishingAndUnequipRod()
+                        task.wait(0.1)
+                    end
+
+                    task.wait(4)
                     resolve(true)
                     
                     task.spawn(function()
-                        if enableds then 
-                            task.wait(1)
-                            autoFishWasOn = true
-                            enableAutoFishingAndEquipRod()
-                        end
+                        task.wait(1)
+                        autoFishWasOn = true
+                        enableAutoFishingAndEquipRod()
                     end)
                 end)
             end
@@ -1021,7 +1024,7 @@ local function buyItem(itemType, itemData, itemName)
     if success then
         NotifySuccess("Purchase Success", "Bought: " .. itemName, 2)
         
-        if itemType == 'Bait' then
+        if itemType == 'Bait' or itemType == 'Merchant' then
             autoFishWasOn = false
             disableAutoFishingAndUnequipRod()
             task.wait(0.5)
