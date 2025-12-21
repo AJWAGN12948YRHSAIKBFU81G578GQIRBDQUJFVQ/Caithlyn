@@ -614,37 +614,17 @@ pcall(function()
         PromptController.FirePrompt = function(self, promptText, ...)
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
-                    local char = LocalPlayer.Character
-                    local equipped = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
-                    local success = false
                     autoFishWasOn = false
-
-                    if equipped then
-                        for i = 1, 5 do
-                            pcall(disableAutoFishingAndUnequipRod)
-                            if not equipped then 
-                                success = true 
-                                break
-                            end
-                        end
-                    end
-
-                    if success then
-                        task.wait(3)
-                        resolve(true)
-                        
-                        task.spawn(function()
-                            task.wait(1)
-                            autoFishWasOn = true
-
-                            for i = 1, 5 do
-                                pcall(enableAutoFishingAndEquipRod)
-                                if not equipped then
-                                    break 
-                                end
-                            end
-                        end)
-                    end
+                    pcall(disableAutoFishingAndUnequipRod)
+                    
+                    task.wait(3)
+                    resolve(true)
+                
+                    task.spawn(function()
+                        task.wait(1)
+                        autoFishWasOn = true
+                        pcall(enableAutoFishingAndEquipRod)
+                    end)
                 end)
             end
             return oldFirePrompt(self, promptText, ...)
