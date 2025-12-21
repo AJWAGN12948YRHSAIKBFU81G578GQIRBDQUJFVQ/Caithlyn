@@ -615,18 +615,34 @@ pcall(function()
             if _G.AutoAcceptTradeEnabled and type(promptText) == "string" and promptText:find("Accept") and promptText:find("from:") then
                 return Promise.new(function(resolve)
                     autoFishWasOn = false
-                    for i = 1, 3 do
-                        disableAutoFishingAndUnequipRod()
-                        task.wait(0.1)
+                    
+                    local char = LocalPlayer.Character
+                    local equipped = char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
+                    local success = false
+
+                    if equipped end
+                        for i = 1, 5 do
+                            pcall(disableAutoFishingAndUnequipRod)
+                            if not equipped then 
+                                success = true 
+                                break
+                            end
+                        end
                     end
 
-                    task.wait(4)
-                    resolve(true)
-                    
-                    task.spawn(function()
-                        task.wait(1)
-                        autoFishWasOn = true
-                        enableAutoFishingAndEquipRod()
+                    if success then
+                        task.wait(3)
+                        resolve(true)
+                        
+                        task.spawn(function()
+                            task.wait(1)
+                            autoFishWasOn = true
+
+                            for i = 1, 5 do
+                                pcall(enableAutoFishingAndEquipRod)
+                                if not equipped then break end
+                            end
+                        end
                     end)
                 end)
             end
