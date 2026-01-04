@@ -550,59 +550,6 @@ end
 
 fpsBoost()
 
-task.spawn(function()
-    task.wait(1)
-
-    local SoundService = game:GetService("SoundService")
-    SoundService.VolumeModifier = 0
-
-    pcall(function()
-        UserSettings():GetService("UserGameSettings").MasterVolume = 0
-    end)
-    
-    local soundCount = 0
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("Sound") then
-            pcall(function()
-                obj.Volume = 0
-                obj:Stop()
-                obj:Destroy()
-                soundCount = soundCount + 1
-            end)
-        end
-    end
-    
-    game.DescendantAdded:Connect(function(obj)
-        if obj:IsA("Sound") then
-            task.wait(0.05)
-            pcall(function()
-                obj.Volume = 0
-                obj:Stop()
-                obj:Destroy()
-            end)
-        end
-    end)
-    
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
-    
-    pcall(function()
-        local GameSettings = UserSettings():GetService("UserGameSettings")
-        GameSettings.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
-    end)
-    
-    pcall(function()
-        settings().Rendering.EditQualityLevel = Enum.QualityLevel.Level01
-    end)
-    
-    task.wait(1)
-    local currentLevel = settings().Rendering.QualityLevel
-    
-    if currentLevel ~= Enum.QualityLevel.Level01 then
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end
-end)
-
 --// Teleport System
 local islands = {
     { Name = "Lost Isle", Position = Vector3.new(-3739.66, -135.07, -1010.27), LookAt = Vector3.new(-3710.56, -105.45, -895.97) },
