@@ -345,12 +345,7 @@ end
 local function enableAutoFish()
     task.spawn(function()
         while autoFishWasOn do
-            local char = LocalPlayer.Character
-            local hasRodEquipped = char and char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
-            
-            if hasRodEquipped then
-                enableAutoFishingAndEquipRod()
-            end
+            enableAutoFishingAndEquipRod()
             
             task.wait(3)
         end
