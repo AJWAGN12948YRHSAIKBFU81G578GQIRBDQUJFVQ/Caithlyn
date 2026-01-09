@@ -1,7 +1,4 @@
 
---// Load WindUI
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
-
 --// Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -345,8 +342,14 @@ end
 local function enableAutoFish()
     task.spawn(function()
         while autoFishWasOn do
-            enableAutoFishingAndEquipRod()
-            task.wait(2)
+            local char = LocalPlayer.Character
+            local hasRodEquipped = char and char:FindFirstChild("!!!FISHING_VIEW_MODEL!!!")
+            
+            if hasRodEquipped then
+                enableAutoFishingAndEquipRod()
+            end
+            
+            task.wait(3)
         end
     end)
 end
@@ -618,7 +621,7 @@ pcall(function()
                     resolve(true)
 
                     task.spawn(function()
-                        disableAutoFishingAndUnequipRod()
+                        fireReelRemote()
                     end)
                 end)
             end
@@ -1015,23 +1018,6 @@ local function buyItem(itemType, itemData, itemName)
     
     if success then
         NotifySuccess("Purchase Success", "Bought: " .. itemName, 2)
-        
-        if itemType == 'Bait' or itemType == 'Merchant' then
-            autoFishWasOn = false
-            disableAutoFishingAndUnequipRod()
-            task.wait(0.5)
- 
-            if itemType == 'Merchant' then itemData = 18 end
-            pcall(function()
-                REEquipBait:FireServer(itemData)
-                NotifySuccess("Equipped", itemName .. " equipped!", 2)
-            end)
-
-            task.wait(0.5)
-            autoFishWasOn = true
-            enableAutoFishingAndEquipRod()
-        end
-
         return true
     else
         NotifyError("Purchase Failed", tostring(result), 2)
